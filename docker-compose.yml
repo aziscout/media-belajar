@@ -4,7 +4,8 @@ services:
   app:
     build:
       context: .
-      dockerfile: Dockerfile
+      # dockerfile: Dockerfile
+      dockerfile: https://github.com/aziscout/media-belajar.git
     container_name: media-belajar-app
     restart: unless-stopped
     ports:
