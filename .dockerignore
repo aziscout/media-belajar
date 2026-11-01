@@ -1,0 +1,12 @@
+.git
+.gitignore
+.DS_Store
+.DS_Store.zip
+*.log
+api/db_error.log
+dist/
+Dockerfile
+docker-compose.yml
+.dockerignore
+README.md
+

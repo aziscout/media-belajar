@@ -1,0 +1,50 @@
+version: '3.8'
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: media-belajar-app
+    restart: unless-stopped
+    ports:
+      - "8080:80"  # Port lokal/VPS (bisa disesuaikan jika ingin akses port langsung)
+    volumes:
+      - media_uploads:/var/www/html/uploads
+    environment:
+      - DB_HOST=db
+      - DB_PORT=3306
+      - DB_NAME=media_belajar
+      - DB_USER=media_user
+      - DB_PASS=media_password_rahasia
+      - TURNSTILE_ENABLED=false
+    depends_on:
+      - db
+    networks:
+      - internal-net
+      # - global-proxy  # Aktifkan jika ingin langsung terhubung ke Traefik / global-proxy Hostinger
+
+  db:
+    image: mariadb:10.11
+    container_name: media-belajar-db
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: root_password_rahasia
+      MYSQL_DATABASE: media_belajar
+      MYSQL_USER: media_user
+      MYSQL_PASSWORD: media_password_rahasia
+    volumes:
+      - db_data:/var/lib/mysql
+    networks:
+      - internal-net
+
+volumes:
+  media_uploads:
+  db_data:
+
+networks:
+  internal-net:
+    driver: bridge
+  # global-proxy:
+  #   external: true
+
