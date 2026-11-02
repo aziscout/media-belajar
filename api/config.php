@@ -193,7 +193,11 @@ function jwt_decode(string $token): ?array {
 
 // ── Get current user from Authorization header ──────────────────────
 function getCurrentUser(): ?array {
-    $auth = $_SERVER['HTTP_AUTHORIZATION'] ?? '';
+    $auth = $_SERVER['HTTP_AUTHORIZATION'] ?? $_SERVER['REDIRECT_HTTP_AUTHORIZATION'] ?? '';
+    if (!$auth && function_exists('apache_request_headers')) {
+        $headers = apache_request_headers();
+        $auth = $headers['Authorization'] ?? $headers['authorization'] ?? '';
+    }
     if (preg_match('/^Bearer\s+(.+)$/i', $auth, $m)) {
         return jwt_decode($m[1]);
     }

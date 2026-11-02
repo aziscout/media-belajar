@@ -13,6 +13,7 @@
 <IfModule mod_rewrite.c>
   RewriteEngine On
   RewriteBase /
+  RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
 
   # Jangan rewrite permintaan ke API PHP
   RewriteCond %{REQUEST_URI} ^/api/ [NC]
