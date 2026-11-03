@@ -62,6 +62,22 @@ $turnstileRaw = strtolower(trim(getEnvVar('TURNSTILE_ENABLED', getEnvVar('VITE_T
 define('TURNSTILE_ENABLED', !in_array($turnstileRaw, ['false', '0', 'off', 'no'], true));
 
 // ── CORS ─────────────────────────────────────────────────────────────
+// ── Ensure Clean JSON Output & Error Handling ────────────────────────
+ini_set('display_errors', '0');
+error_reporting(E_ALL);
+
+set_exception_handler(function (\Throwable $e) {
+    if (!headers_sent()) {
+        http_response_code(500);
+        header('Content-Type: application/json; charset=utf-8');
+    }
+    echo json_encode([
+        'status'  => 'error',
+        'error'   => $e->getMessage()
+    ], JSON_UNESCAPED_UNICODE);
+    exit;
+});
+
 header('Content-Type: application/json; charset=utf-8');
 header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: GET, POST, PUT, PATCH, DELETE, OPTIONS');

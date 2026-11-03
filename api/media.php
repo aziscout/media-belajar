@@ -227,6 +227,28 @@ function handlePost(): void {
     }
 }
 
+function ensureMediaReviewColumns(PDO $db): void {
+    static $ensured = false;
+    if ($ensured) return;
+    try {
+        $cols = $db->query("SHOW COLUMNS FROM `media`")->fetchAll(PDO::FETCH_COLUMN);
+        $needed = [
+            'reviewed_by'    => 'VARCHAR(64) NULL',
+            'reviewer_name'  => 'VARCHAR(255) NULL',
+            'reviewed_at'    => 'DATETIME NULL',
+            'rejection_note' => 'TEXT NULL'
+        ];
+        foreach ($needed as $col => $type) {
+            if (!in_array($col, $cols)) {
+                $db->exec("ALTER TABLE `media` ADD COLUMN `$col` $type");
+            }
+        }
+        $ensured = true;
+    } catch (\Throwable $t) {
+        // Abaikan jika permission terbatas
+    }
+}
+
 function handlePatch(): void {
     $id = $_GET['id'] ?? '';
     if (!$id) {
@@ -245,8 +267,11 @@ function handlePatch(): void {
     $body = jsonBody();
     $db = getDB();
 
+    // Pastikan kolom peninjauan tersedia di database
+    ensureMediaReviewColumns($db);
+
     // Build dynamic UPDATE
-    $allowed = ['status', 'reviewed_by', 'reviewed_at', 'rejection_note', 'judul', 'deskripsi', 'jenis', 'jenjang', 'jenjangs', 'kelas', 'mapel', 'kompetensi_keahlian', 'link', 'embeddable', 'tags', 'thumbnail', 'views'];
+    $allowed = ['status', 'reviewed_by', 'reviewer_name', 'reviewed_at', 'rejection_note', 'judul', 'deskripsi', 'jenis', 'jenjang', 'jenjangs', 'kelas', 'mapel', 'kompetensi_keahlian', 'link', 'embeddable', 'tags', 'thumbnail', 'views'];
     $sets = [];
     $params = [];
 
@@ -259,6 +284,11 @@ function handlePatch(): void {
         if ($key === 'kelas') {
             $val = ($val !== '' && $val !== 0 && $val !== null) ? (int) $val : null;
             if ($val !== null && ($val < 1 || $val > 12)) $val = null;
+        }
+        // Format ISO 8601 datetime to MySQL DATETIME
+        if ($key === 'reviewed_at' && is_string($val) && !empty($val)) {
+            $ts = strtotime($val);
+            $val = $ts ? date('Y-m-d H:i:s', $ts) : date('Y-m-d H:i:s');
         }
         $sets[] = "`$key` = ?";
         $params[] = $val;
@@ -278,11 +308,16 @@ function handlePatch(): void {
         }
     }
 
-    $params[] = $id;
-    $sql = 'UPDATE media SET ' . implode(', ', $sets) . ' WHERE id = ?';
-    $db->prepare($sql)->execute($params);
+    try {
+        $params[] = $id;
+        $sql = 'UPDATE media SET ' . implode(', ', $sets) . ' WHERE id = ?';
+        $db->prepare($sql)->execute($params);
 
-    jsonResponse(['ok' => true]);
+        jsonResponse(['ok' => true]);
+    } catch (\Throwable $e) {
+        logDbError("Gagal UPDATE media: " . $e->getMessage() . " (SQL: $sql)", $params);
+        jsonResponse(['error' => 'Gagal memperbarui status media: ' . $e->getMessage()], 500);
+    }
 }
 
 function handleDelete(): void {
